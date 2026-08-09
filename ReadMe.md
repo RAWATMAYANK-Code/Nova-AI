@@ -6,6 +6,8 @@ This project is a web application that helps users verify whether a piece of new
 
 The application is built as a Flask backend with a single-page frontend. The frontend supports microphone input for hands-free claim entry and text-to-speech playback of results, in addition to standard text and image submission.
 
+Before reaching the main interface, a first-time visitor is shown a lightweight "I'm not a robot" verification screen (Google reCAPTCHA v2). Once verified, the browser stays verified indefinitely until the user explicitly logs out, so returning visitors go straight to the main app.
+
 ## How the Verification Pipeline Works
 
 When a claim is submitted, it goes through the following stages:
@@ -30,6 +32,7 @@ In addition to text, the application accepts an uploaded image file or a direct 
 
 The frontend is a single HTML page served by the Flask backend. It provides:
 
+- A bot-check verification gate shown before the main app: a Google reCAPTCHA v2 checkbox that must be completed to continue. The result is verified server-side, and the verified state persists in the browser (localStorage) with no expiry until the user logs out.
 - A text input for typing a claim directly.
 - Microphone input using the browser's built-in speech recognition, allowing a claim to be spoken instead of typed. The microphone remains active across natural pauses in speech and is intended to keep listening until the user stops it manually, since browsers can otherwise cut recognition off after a few seconds of silence.
 - Image upload and image URL submission for claims that arrive as screenshots or shared images.
@@ -40,7 +43,7 @@ The frontend is a single HTML page served by the Flask backend. It provides:
 
 | File | Purpose |
 |---|---|
-| `app.py` | Flask application. Defines the web routes for text, image upload, and image URL submissions, and serves the frontend. |
+| `app.py` | Flask application. Defines the web routes for text, image upload, and image URL submissions, serves the frontend, and handles Google reCAPTCHA v2 config/verification for the access gate. |
 | `main.py` | Orchestrates the full verification pipeline described above, from classification through to the final verdict. |
 | `claim_extractor.py` | Classifies a claim as a news event or a general fact, and extracts a short version of it suitable for search, in a single API call. |
 | `fact_check.py` | Retrieves related news articles from NewsData.io for a given claim. |
@@ -59,13 +62,14 @@ The frontend is a single HTML page served by the Flask backend. It provides:
 - A Groq API key
 - A Google Gemini API key
 - A NewsData.io API key
+- A Google reCAPTCHA v2 site key and secret key (free — register at [google.com/recaptcha/admin](https://www.google.com/recaptcha/admin); the app falls back to Google's public test keys if none are set, which is fine for local development but must be replaced before deploying publicly)
 
 ### Installation
 
 1. Install the required Python packages:
 
    ```
-   pip install flask groq requests python-dotenv joblib numpy scikit-learn
+   pip install flask groq requests python-dotenv joblib numpy scikit-learn flask-cors flask-limiter
    ```
 
 2. Create a `.env` file in the project root with the following entries:
@@ -74,6 +78,8 @@ The frontend is a single HTML page served by the Flask backend. It provides:
    GROQ_API_KEY=your_groq_api_key
    GEMINI_API_KEY=your_gemini_api_key
    NEWSDATA_API_KEY=your_newsdata_api_key
+   RECAPTCHA_SITE_KEY=your_recaptcha_site_key
+   RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
    ```
 
 3. Ensure a trained model and vectorizer are available at `model/fake_news_model.pkl` and `model/vectorizer.pkl`. These are used by the fallback classifier and are not included in this repository.
@@ -99,6 +105,14 @@ Accepts a multipart form upload with an `image` field. The claim text is first e
 ### `POST /check-image-url`
 
 Accepts a JSON body with a `url` field pointing directly to an image. The image is downloaded, the claim text is extracted, and the result is returned in the same way as `/check-image`.
+
+### `GET /recaptcha-config`
+
+Returns the public reCAPTCHA site key so the frontend can render the verification widget.
+
+### `POST /verify-recaptcha`
+
+Accepts a JSON body with a `token` field (the response token from the completed reCAPTCHA widget). Verifies the token against Google's siteverify API and returns `{"success": true}` on success, or an error message on failure. Rate-limited to 5 requests per minute per IP.
 
 ## Limitations
 
