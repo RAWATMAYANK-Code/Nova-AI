@@ -647,6 +647,7 @@ function checkAppSession() {
   } else {
     hideAllScreens();
     if (mainAppContainer) mainAppContainer.classList.remove("hidden");
+    requestAnimationFrame(() => { if (typeof initHeaderWave === "function") initHeaderWave(); });
     try {
       const p = JSON.parse(profileRaw);
       if (profileBtn) profileBtn.title = "Profile: " + p.name;
@@ -1702,6 +1703,9 @@ if (chatHistory) {
 function initHeaderWave() {
   const canvas = document.getElementById("headerWaveCanvas");
   if (!canvas) return;
+  // Prevent stacking multiple animation loops on repeated calls
+  if (canvas._waveRunning) return;
+  canvas._waveRunning = true;
   const ctx = canvas.getContext("2d");
   let phase = 0;
 
@@ -1764,6 +1768,7 @@ function initHeaderWave() {
 
   draw();
 }
-initHeaderWave();
+requestAnimationFrame(() => initHeaderWave());
+
 </script>
 </body></html>
