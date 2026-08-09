@@ -1703,7 +1703,7 @@ if (chatHistory) {
 function initHeaderWave() {
   const canvas = document.getElementById("headerWaveCanvas");
   if (!canvas) return;
-  // Prevent stacking multiple animation loops on repeated calls
+  // Only start one animation loop total
   if (canvas._waveRunning) return;
   canvas._waveRunning = true;
   const ctx = canvas.getContext("2d");
@@ -1721,8 +1721,16 @@ function initHeaderWave() {
 
   function draw() {
     const dpr = window.devicePixelRatio || 1;
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
+    let w = canvas.width / dpr;
+    let h = canvas.height / dpr;
+
+    // If canvas still has no size (container was hidden), re-measure and retry
+    if (!w || !h) {
+      resize();
+      w = canvas.width / dpr;
+      h = canvas.height / dpr;
+    }
+
     ctx.clearRect(0, 0, w, h);
 
     if (!w || !h) {
@@ -1750,9 +1758,7 @@ function initHeaderWave() {
 
       for (let x = 0; x <= w; x += 2) {
         const t = x / w;
-        // Shortened straight beam tails (-) at both start (near 'n') and end (near Person icon)
         const edgeFade = Math.pow(Math.sin(t * Math.PI), 1.15);
-        
         const y = (centerY + wave.yOffset * edgeFade) + Math.sin(x * wave.freq - phase * wave.speed * 40) * wave.amp * edgeFade;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -1761,7 +1767,6 @@ function initHeaderWave() {
       ctx.restore();
     });
 
-    // Smooth wave animation speed
     phase += 0.022;
     requestAnimationFrame(draw);
   }
