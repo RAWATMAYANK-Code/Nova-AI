@@ -180,13 +180,24 @@
             overflow: visible;
             z-index: 1;
         }
+/* ---- Mobile: scale down reCAPTCHA iframe if screen is narrow ---- */
+@media (max-width: 360px) {
+  #recaptchaWidgetContainer iframe {
+    transform: scale(0.88);
+    transform-origin: left center;
+  }
+}
+/* Ensure the verification card never clips its children */
+#verificationScreenContainer > div {
+  overflow: visible !important;
+}
 </style>
 </head>
 <body class="bg-background text-on-surface min-h-screen flex flex-col antialiased">
 
 <!-- Verification Screen Container (Shown when not verified) -->
 <div id="verificationScreenContainer" class="min-h-screen flex items-center justify-center p-4 relative z-50">
-  <div class="glass-strong rounded-3xl p-8 md:p-10 max-w-md w-full border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col items-center text-center gap-6">
+  <div class="glass-strong rounded-3xl p-8 md:p-10 max-w-md w-full border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative flex flex-col items-center text-center gap-6">
 
     <!-- Top Glow Accent -->
     <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -662,7 +673,11 @@ async function renderRecaptchaWidget() {
     const configResp = await fetch("/recaptcha-config");
     const configData = await configResp.json();
     const siteKey = configData.site_key || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
+
+    let elapsed = 0;
     const checkGrecaptcha = setInterval(() => {
+      elapsed += 100;
+
       if (window.grecaptcha && window.grecaptcha.render) {
         clearInterval(checkGrecaptcha);
         try {
@@ -670,10 +685,37 @@ async function renderRecaptchaWidget() {
             sitekey: siteKey, theme: "dark",
             callback: "onRecaptchaSuccess", "expired-callback": "onRecaptchaExpired"
           });
-        } catch (e) { console.warn("reCAPTCHA render error:", e); }
+        } catch (e) {
+          console.warn("reCAPTCHA render error:", e);
+          showRecaptchaFallback();
+        }
+        return;
+      }
+
+      // Timeout after 8 seconds — show a retry button
+      if (elapsed >= 8000) {
+        clearInterval(checkGrecaptcha);
+        console.warn("reCAPTCHA timed out — showing retry fallback.");
+        showRecaptchaFallback();
       }
     }, 100);
-  } catch (err) { console.warn("Failed to fetch reCAPTCHA config:", err); }
+  } catch (err) {
+    console.warn("Failed to fetch reCAPTCHA config:", err);
+    showRecaptchaFallback();
+  }
+}
+
+function showRecaptchaFallback() {
+  if (!recaptchaWidgetContainer) return;
+  recaptchaWidgetContainer.innerHTML = `
+    <div style="text-align:center;padding:12px 0;">
+      <p style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:10px;">⚠️ Verification widget failed to load.<br>Check your internet connection and try again.</p>
+      <button
+        onclick="renderRecaptchaWidget()"
+        style="background:rgba(78,222,163,0.15);border:1px solid rgba(78,222,163,0.4);color:#4edea3;font-size:13px;font-weight:600;padding:8px 22px;border-radius:10px;cursor:pointer;"
+      >🔄 Retry</button>
+    </div>
+  `;
 }
 
 // reCAPTCHA Continue Button

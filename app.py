@@ -40,9 +40,12 @@ def add_security_headers(response):
     """
     response.headers["Content-Security-Policy"] = (
         "default-src 'self' https: data: 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline' cdn.tailwindcss.com; "
-        "style-src 'self' 'unsafe-inline' fonts.googleapis.com; "
+        "script-src 'self' 'unsafe-inline' cdn.tailwindcss.com "
+            "www.google.com/recaptcha/ www.gstatic.com/recaptcha/ "
+            "www.google.com www.gstatic.com; "
+        "style-src 'self' 'unsafe-inline' fonts.googleapis.com www.gstatic.com; "
         "font-src 'self' fonts.gstatic.com; "
+        "frame-src www.google.com www.gstatic.com; "
         "img-src 'self' data: https:;"
     )
     response.headers["X-Content-Type-Options"] = "nosniff"
