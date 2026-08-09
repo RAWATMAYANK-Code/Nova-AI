@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TruthVision - Fact Checker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                "background": "#0f131c",
+                "surface": "#0f131c",
+                "surface-dim": "#0f131c",
+                "surface-bright": "#353942",
+                "surface-container-lowest": "#0a0e16",
+                "surface-container-low": "#181c24",
+                "surface-container": "#1c2028",
+                "surface-container-high": "#262a33",
+                "surface-container-highest": "#31353e",
+                "on-surface": "#dfe2ee",
+                "on-surface-variant": "#94a3b8",
+                "outline": "#86948a",
+                "outline-variant": "#3c4a42",
+                "primary": "#4edea3",
+                "on-primary": "#003824",
+                "primary-container": "#10b981",
+                "on-primary-container": "#00422b",
+                "secondary": "#ffb95f",
+                "on-secondary": "#472a00",
+                "secondary-container": "#ee9800",
+                "tertiary": "#ffb3af",
+                "error": "#fc7c78",
+                "on-error-container": "#ffdad6",
+                "error-container": "#93000a"
+              },
+              fontFamily: {
+                sans: ["\"Plus Jakarta Sans\"", "sans-serif"],
+              },
+              borderRadius: { "xl": "1rem", "2xl": "1.5rem", "full": "9999px" }
+            }
+          }
+        }
+      </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0f131c;
+            background-image:
+                radial-gradient(circle at 15% 10%, rgba(78,222,163,0.08), transparent 40%),
+                radial-gradient(circle at 85% 90%, rgba(13,148,136,0.08), transparent 40%);
+            background-attachment: fixed;
+        }
+        .glass {
+            background: rgba(28, 32, 40, 0.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .glass-strong {
+            background: rgba(20, 24, 32, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .glow-primary { box-shadow: 0 0 16px rgba(78,222,163,0.35); }
+        .glow-amber { box-shadow: 0 0 12px rgba(255,185,95,0.3); }
+        .glow-error { box-shadow: 0 0 12px rgba(252,124,120,0.3); }
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        /* Nav tabs container: soft ambient glow */
+        .nav-tabs-glow {
+            box-shadow: 0 0 14px rgba(78,222,163,0.1);
+        }
+        /* Active "Verify" tab: pulsing green glow */
+        .nav-tab-active {
+            border: 1px solid rgba(78,222,163,0.4);
+            animation: navTabGlowPulse 3s ease-in-out infinite;
+        }
+        @keyframes navTabGlowPulse {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(78,222,163,0.3), 0 0 20px rgba(78,222,163,0.12);
+                border-color: rgba(78,222,163,0.35);
+            }
+            50% {
+                box-shadow: 0 0 16px rgba(78,222,163,0.55), 0 0 32px rgba(78,222,163,0.22);
+                border-color: rgba(78,222,163,0.7);
+            }
+        }
+        /* Live stat / date pill: subtle ambient glow */
+        .stat-pill-glow {
+            box-shadow: 0 0 12px rgba(78,222,163,0.08);
+        }
+        /* Glowing frame around the entire header block */
+        .header-frame {
+            border: 1px solid rgba(78,222,163,0.22);
+            border-top: none;
+            border-radius: 0 0 28px 28px;
+            animation: headerFrameGlow 4s ease-in-out infinite;
+        }
+        @keyframes headerFrameGlow {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 1px rgba(78,222,163,0.08),
+                    0 0 22px rgba(78,222,163,0.14),
+                    0 12px 32px -10px rgba(0,0,0,0.6);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 1px rgba(78,222,163,0.22),
+                    0 0 34px rgba(78,222,163,0.26),
+                    0 12px 32px -10px rgba(0,0,0,0.6);
+            }
+        }
+        .sonar {
+            position: relative;
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .sonar-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #4edea3;
+            box-shadow: 0 0 10px 2px rgba(78,222,163,0.9);
+            z-index: 2;
+        }
+        .sonar-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1.5px solid #4edea3;
+            opacity: 0;
+            animation: sonarPulse 1.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+        }
+        .sonar-ring:nth-child(2) { animation-delay: 0.5s; border-color: #ffb95f; }
+        .sonar-ring:nth-child(3) { animation-delay: 1s; }
+        @keyframes sonarPulse {
+            0% { width: 8px; height: 8px; opacity: 0.9; }
+            100% { width: 32px; height: 32px; opacity: 0; }
+        }
+        .msg-in { animation: msgIn 0.35s ease; }
+        @keyframes msgIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+        /* Pulsing glow for the user's sent message bubble */
+        .msg-glow {
+            animation: msgGlowPulse 3s ease-in-out infinite;
+        }
+        @keyframes msgGlowPulse {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(78,222,163,0.25), 0 0 22px rgba(78,222,163,0.08);
+                border-color: rgba(78,222,163,0.3);
+            }
+            50% {
+                box-shadow: 0 0 18px rgba(78,222,163,0.5), 0 0 36px rgba(78,222,163,0.2);
+                border-color: rgba(78,222,163,0.75);
+            }
+        }
+        #micBtn.listening { color: #fc7c78; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%{opacity:1;} 50%{opacity:0.5;} 100%{opacity:1;} }
+        #imagePreviewBar img { max-height: 56px; border-radius: 10px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+        /* Search bar border trace container */
+        .glow-frame-pill {
+    position: relative;
+    border-radius: 9999px;
+    transition: box-shadow 0.3s ease;
+}
+        .glow-frame-pill.is-active {
+    box-shadow: 0 0 18px rgba(78,222,163,0.15), 0 0 34px rgba(78,222,163,0.08);
+}
+        .glow-trace {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: visible;
+            z-index: 1;
+        }
+</style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col antialiased">
+
+<!-- Verification Screen Container (Shown when not verified) -->
+<div id="verificationScreenContainer" class="min-h-screen flex items-center justify-center p-4 relative z-50">
+  <div class="glass-strong rounded-3xl p-8 md:p-10 max-w-md w-full border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col items-center text-center gap-6">
+
+    <!-- Top Glow Accent -->
+    <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- Header / Brand -->
+    <div class="flex flex-col items-center text-center gap-3">
+      <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-sky-400/20 text-primary border border-primary/30 shadow-[0_0_20px_rgba(78,222,163,0.35)]">
+        <span class="material-symbols-outlined text-[32px]">verified_user</span>
+      </div>
+      <div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-on-surface tracking-tight">TruthVision Protection</h2>
+        <p class="text-xs md:text-sm text-on-surface-variant mt-1">Verify you're human to continue to the AI fact-checking engine.</p>
+      </div>
+    </div>
+
+    <!-- Alert / Error Banner -->
+    <div id="recaptchaAlertBanner" class="hidden w-full p-3.5 rounded-xl text-xs font-medium border text-center transition-all"></div>
+
+    <!-- reCAPTCHA v2 Widget Container -->
+    <div class="flex justify-center my-2">
+      <div id="recaptchaWidgetContainer"></div>
+    </div>
+
+    <!-- Continue Button (Disabled until reCAPTCHA checkbox is passed) -->
+    <button id="continueBtn" disabled type="button" class="w-full bg-primary text-on-primary font-bold text-sm py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 glow-primary disabled:opacity-40 disabled:pointer-events-none hover:brightness-110">
+      <span id="continueBtnText">Continue to TruthVision</span>
+      <span id="continueBtnSpinner" class="hidden material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+      <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+    </button>
+
+    <div class="text-center text-[11px] text-on-surface-variant/50 pt-2 border-t border-white/5 w-full">
+      Protected by Google reCAPTCHA • Verified Device Session
+    </div>
+  </div>
+</div><!-- End #verificationScreenContainer -->
+
+<!-- STEP A: Username / Full Name Onboarding Screen -->
+<div id="onboardingNameContainer" class="hidden min-h-screen flex items-center justify-center p-4 relative z-50">
+  <div class="glass-strong rounded-3xl p-8 md:p-10 max-w-md w-full border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col gap-6 text-center">
+
+    <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="flex flex-col items-center gap-3">
+      <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-sky-400/20 text-primary border border-primary/30 shadow-[0_0_20px_rgba(78,222,163,0.35)]">
+        <span class="material-symbols-outlined text-[32px]">badge</span>
+      </div>
+      <div>
+        <span class="text-[11px] font-bold tracking-wider uppercase text-primary bg-primary/10 border border-primary/30 px-3 py-1 rounded-full">Step 1 of 2</span>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-on-surface tracking-tight mt-2">What should we call you?</h2>
+        <p class="text-xs md:text-sm text-on-surface-variant mt-1">Enter your full name or username to personalize your AI engine session.</p>
+      </div>
+    </div>
+
+    <div id="nameAlertBanner" class="hidden w-full p-3.5 rounded-xl text-xs font-medium border text-center transition-all bg-error-container/30 border-error/40 text-on-error-container"></div>
+
+    <form id="onboardingNameForm" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5 text-left">
+        <label for="userNameInput" class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Full Name / Username</label>
+        <div class="relative flex items-center">
+          <span class="material-symbols-outlined absolute left-3.5 text-[20px] text-on-surface-variant/60 pointer-events-none">person</span>
+          <input id="userNameInput" type="text" required placeholder="e.g. Alex Morgan" class="w-full bg-surface-container-low border border-white/10 focus:border-primary/60 rounded-xl pl-11 pr-4 py-3 text-sm text-on-surface placeholder-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary/60 transition-all"/>
+        </div>
+      </div>
+
+      <button id="submitNameBtn" type="submit" class="w-full bg-primary text-on-primary font-bold text-sm py-3.5 px-4 rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 glow-primary">
+        <span>Next: Verify Age</span>
+        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+      </button>
+    </form>
+
+    <div class="text-center text-[11px] text-on-surface-variant/50 pt-2 border-t border-white/5">
+      TruthVision AI Protection • Device Local Storage
+    </div>
+  </div>
+</div>
+
+<!-- STEP B: Date of Birth & Age Verification Screen -->
+<div id="onboardingDobContainer" class="hidden min-h-screen flex items-center justify-center p-4 relative z-50">
+  <div class="glass-strong rounded-3xl p-8 md:p-10 max-w-md w-full border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden flex flex-col gap-6 text-center">
+
+    <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="flex flex-col items-center gap-3">
+      <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-sky-400/20 text-primary border border-primary/30 shadow-[0_0_20px_rgba(78,222,163,0.35)]">
+        <span class="material-symbols-outlined text-[32px]">cake</span>
+      </div>
+      <div>
+        <span class="text-[11px] font-bold tracking-wider uppercase text-primary bg-primary/10 border border-primary/30 px-3 py-1 rounded-full">Step 2 of 2</span>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-on-surface tracking-tight mt-2">Age Verification</h2>
+        <p class="text-xs md:text-sm text-on-surface-variant mt-1">Please select your Date of Birth to verify your eligibility (Minimum age: 13).</p>
+      </div>
+    </div>
+
+    <div id="dobAlertBanner" class="hidden w-full p-3.5 rounded-xl text-xs font-medium border text-center transition-all bg-error-container/30 border-error/40 text-on-error-container"></div>
+
+    <form id="onboardingDobForm" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5 text-left">
+        <label for="userDobInput" class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Date of Birth</label>
+        <div class="relative flex items-center">
+          <span class="material-symbols-outlined absolute left-3.5 text-[20px] text-on-surface-variant/60 pointer-events-none">calendar_today</span>
+          <input id="userDobInput" type="date" required class="w-full bg-surface-container-low border border-white/10 focus:border-primary/60 rounded-xl pl-11 pr-4 py-3 text-sm text-on-surface placeholder-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary/60 transition-all"/>
+        </div>
+        <!-- Live Verified Age Badge -->
+        <div id="calculatedAgeBadge" class="hidden mt-2 p-2.5 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold text-center flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">verified</span>
+          <span id="calculatedAgeText">Age: 24 years old (Verified)</span>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="backToNameBtn" type="button" class="w-1/3 bg-white/5 border border-white/10 text-on-surface font-semibold text-sm py-3.5 px-3 rounded-xl hover:bg-white/10 transition-all">
+          Back
+        </button>
+        <button id="submitDobBtn" type="submit" class="w-2/3 bg-primary text-on-primary font-bold text-sm py-3.5 px-4 rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 glow-primary">
+          <span>Complete Setup</span>
+          <span class="material-symbols-outlined text-[18px]">check_circle</span>
+        </button>
+      </div>
+    </form>
+
+    <div class="text-center text-[11px] text-on-surface-variant/50 pt-2 border-t border-white/5">
+      TruthVision AI Protection • Verified Device Session
+    </div>
+  </div>
+</div>
+
+<!-- Main Application Container (Shown when verified) -->
+<div id="mainAppContainer" class="hidden min-h-screen flex flex-col flex-grow">
+
+<header class="glass header-frame sticky top-0 z-50 border-x-0 border-t-0 relative">
+
+<!-- Row 1: Far-left AI Engine Status Badge + Navigation menu + brand + waves canvas + profile icon + logout -->
+<div class="flex justify-between items-center w-full px-6 md:px-10 py-3 relative z-10 gap-3 md:gap-4">
+<!-- Aesthetic Far-Left AI Engine Status Badge covering the entire free space -->
+<div class="hidden lg:flex items-center gap-2.5 px-4 py-2 rounded-2xl glass-strong border border-primary/30 bg-gradient-to-r from-primary/15 via-teal-500/10 to-transparent shadow-[0_0_15px_rgba(78,222,163,0.25)] flex-shrink-0">
+  <div class="relative flex items-center justify-center w-3 h-3">
+    <span class="w-3 h-3 rounded-full bg-primary animate-ping absolute opacity-75"></span>
+    <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+  </div>
+  <span class="material-symbols-outlined text-[20px] text-primary">psychology</span>
+  <span class="text-xs font-bold tracking-wider uppercase text-primary">AI Engine Active</span>
+</div>
+
+<!-- Navigation Widgets Button -->
+<button id="menuBtn" aria-label="Navigation Menu" class="flex items-center justify-center w-10 h-10 rounded-xl glass-strong hover:bg-white/10 text-on-surface hover:text-primary transition-all border border-white/10 shadow-sm flex-shrink-0 group">
+  <span class="material-symbols-outlined text-[22px] group-hover:rotate-90 transition-transform duration-300">widgets</span>
+</button>
+
+<!-- TruthVision Brand -->
+<div class="flex items-center gap-2.5 flex-shrink-0">
+  <!-- Aesthetic AI Vision Icon -->
+  <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-sky-400/20 text-primary border border-primary/30 shadow-[0_0_12px_rgba(78,222,163,0.35)] transition-all hover:scale-105">
+    <span class="material-symbols-outlined text-[24px] md:text-[26px]">auto_awesome</span>
+  </div>
+  <span class="material-symbols-outlined text-primary text-[28px] md:text-[32px]" style="filter: drop-shadow(0 0 8px rgba(78,222,163,0.6));">verified</span>
+  <span class="text-on-surface font-extrabold text-2xl md:text-3xl tracking-tight leading-none">TruthVision</span>
+</div>
+
+<!-- Animated Waves canvas starting touching the 'n' of TruthVision up to Person icon -->
+<div class="flex-grow h-12 relative overflow-hidden flex items-center mx-0">
+  <canvas id="headerWaveCanvas" class="w-full h-full opacity-90"></canvas>
+</div>
+
+<!-- Logout & Profile / Person Icon -->
+<div class="flex items-center gap-2 flex-shrink-0">
+  <button id="logoutBtn" title="Log Out" aria-label="Log Out" class="text-on-surface-variant hover:text-error hover:bg-error/10 transition-all flex items-center justify-center px-3 py-1.5 rounded-xl border border-white/10 glass-strong gap-1.5">
+    <span class="material-symbols-outlined text-[18px]">logout</span>
+    <span class="text-xs font-semibold hidden md:inline">Log Out</span>
+  </button>
+  <button id="profileBtn" aria-label="Profile" class="text-on-surface hover:opacity-80 hover:bg-white/5 transition-all flex items-center justify-center p-1 rounded-full flex-shrink-0">
+    <span class="material-symbols-outlined text-[30px] md:text-[34px]">account_circle</span>
+  </button>
+</div>
+</div>
+
+<!-- Row 2: nav tabs + live stat + date/time -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full px-6 md:px-10 pb-4 max-w-[1280px] mx-auto border-t border-white/[0.06] pt-3.5 relative z-10">
+<div class="flex items-center gap-1 glass-strong rounded-full p-1 nav-tabs-glow">
+  <button class="nav-tab-active flex items-center gap-1.5 text-primary bg-primary/10 text-xs font-semibold px-4 py-1.5 rounded-full">
+    <span class="material-symbols-outlined text-[16px]">fact_check</span> Verify
+  </button>
+  <button id="historyTabBtn" class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-xs font-semibold px-4 py-1.5 rounded-full transition-colors hover:bg-white/5">
+    <span class="material-symbols-outlined text-[16px]">history</span> History
+  </button>
+</div>
+<div class="glass rounded-full px-4 py-2 stat-pill-glow flex flex-wrap items-center gap-3 sm:gap-4 text-[11px] text-on-surface-variant font-medium tracking-wide">
+  <span class="flex items-center gap-1.5">
+    <span class="w-1.5 h-1.5 rounded-full bg-primary" style="box-shadow: 0 0 6px 1px rgba(78,222,163,0.8); animation: statusPulse 2s ease-in-out infinite;"></span>
+    <span id="liveStatCounter">0</span> claims verified this session
+  </span>
+  <span id="headerDateTime" class="opacity-70"></span>
+</div>
+</div>
+
+</header>
+
+<!-- History Sidebar -->
+<div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-[60] hidden"></div>
+<aside id="historySidebar" class="fixed top-0 left-0 h-full w-[280px] glass-strong z-[70] transform -translate-x-full transition-transform duration-300 flex flex-col">
+  <div class="flex items-center justify-between p-4 border-b border-white/[0.08]">
+    <span class="font-bold text-on-surface text-sm tracking-wide">HISTORY</span>
+    <button id="closeSidebarBtn" class="p-1.5 rounded-full hover:bg-white/10 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[20px]">close</span>
+    </button>
+  </div>
+  <button id="newCheckBtn" class="mx-4 mt-4 flex items-center gap-2 text-primary text-sm font-semibold border border-primary/30 rounded-full px-4 py-2 hover:bg-primary/10 transition-colors glow-primary">
+    <span class="material-symbols-outlined text-[18px]">add</span> New Check
+  </button>
+  <div id="historyList" class="flex-grow overflow-y-auto px-3 py-4 flex flex-col gap-1">
+    <div class="text-xs text-on-surface-variant/50 text-center mt-6">No history yet</div>
+  </div>
+  <div class="p-3 border-t border-white/[0.08]">
+    <button id="clearHistoryBtn" class="w-full text-xs text-on-surface-variant/60 hover:text-error transition-colors py-2">Clear all history</button>
+  </div>
+</aside>
+
+<!-- Fullscreen Image Lightbox Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
+  <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+    <button id="closeImageModal" class="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition-colors flex items-center justify-center">
+      <span class="material-symbols-outlined text-[24px]">close</span>
+    </button>
+    <img id="imageModalImg" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/15" alt="Uploaded picture"/>
+  </div>
+</div>
+
+<!-- Interactive User Profile Modal -->
+<div id="profileModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
+  <div class="glass-strong rounded-3xl p-6 md:p-8 max-w-md w-full border border-white/15 shadow-2xl relative flex flex-col gap-5">
+
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center gap-2.5">
+        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 text-primary">
+          <span class="material-symbols-outlined text-[24px]">account_circle</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-extrabold text-on-surface">User Profile</h3>
+          <p class="text-xs text-on-surface-variant">Stored locally on your device</p>
+        </div>
+      </div>
+      <button id="closeProfileModalBtn" type="button" class="p-2 rounded-full hover:bg-white/10 text-on-surface-variant transition-colors">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+
+    <!-- Alert / Message Banner -->
+    <div id="profileAlertBanner" class="hidden w-full p-3 rounded-xl text-xs font-medium border text-center transition-all"></div>
+
+    <form id="profileEditForm" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5 text-left">
+        <label for="profileNameInput" class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Full Name / Username</label>
+        <input id="profileNameInput" type="text" required class="w-full bg-surface-container-low border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-sm text-on-surface focus:outline-none transition-all"/>
+      </div>
+
+      <div class="flex flex-col gap-1.5 text-left">
+        <label for="profileDobInput" class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Date of Birth</label>
+        <input id="profileDobInput" type="date" required class="w-full bg-surface-container-low border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-sm text-on-surface focus:outline-none transition-all"/>
+      </div>
+
+      <!-- Age Status Pill -->
+      <div class="p-3 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold flex items-center justify-between">
+        <span class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">verified</span> Status
+        </span>
+        <span id="profileAgeBadgeText">Verified (24 yrs old)</span>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button id="saveProfileBtn" type="submit" class="flex-grow bg-primary text-on-primary font-bold text-sm py-2.5 px-4 rounded-xl hover:brightness-110 transition-all glow-primary flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">save</span> Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<main class="flex-grow flex flex-col max-w-[1280px] mx-auto w-full px-4 md:px-10 py-6 gap-6 overflow-hidden relative h-[calc(100vh-88px)]">
+
+<!-- Welcome / landing state, shown before the first check -->
+<div id="welcomeScreen" class="flex-grow flex flex-col items-center justify-center gap-6 text-center px-4">
+  <div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary text-[36px]" style="filter: drop-shadow(0 0 12px rgba(78,222,163,0.6));">verified</span>
+    <h1 class="text-4xl md:text-5xl font-extrabold text-primary tracking-tight" style="text-shadow: 0 0 30px rgba(78,222,163,0.4);">TruthVision</h1>
+  </div>
+  <p class="text-on-surface-variant text-base md:text-lg max-w-lg">
+    Paste a claim, headline, or upload a screenshot — I'll verify it against live sources and AI cross-checks.
+  </p>
+  <div class="flex flex-wrap gap-2 justify-center mt-2" id="chipsWelcome">
+    <button class="chip glass text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full hover:bg-white/5 hover:text-primary transition-colors" data-text="The earth is round">The earth is round</button>
+    <button class="chip glass text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full hover:bg-white/5 hover:text-primary transition-colors" data-text="India wins cricket match against Australia">India vs Australia cricket</button>
+    <button class="chip glass text-on-surface-variant text-xs font-semibold px-4 py-2 rounded-full hover:bg-white/5 hover:text-primary transition-colors" data-text="Aliens landed in my backyard and gave me a free laptop">Aliens gave me a laptop</button>
+  </div>
+</div>
+
+<div id="chatHistory" class="hidden flex-grow overflow-y-auto flex flex-col gap-6 pr-2">
+</div>
+
+<div class="w-full pt-2 sticky bottom-0 z-10 pb-2">
+
+  <div id="imagePreviewBar" class="hidden items-center gap-3 glass rounded-2xl p-3 mb-2">
+    <img id="imagePreviewImg" src="" alt="preview"/>
+    <span class="text-xs text-on-surface-variant flex-grow">Image attached</span>
+    <button id="removeImageBtn" aria-label="Remove image" class="p-2 rounded-full hover:bg-white/10 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">close</span>
+    </button>
+  </div>
+
+  <div id="searchBarFrame" class="glow-frame-pill glass-strong rounded-full p-2 flex items-center gap-1 relative transition-all duration-300 focus-within:border-primary/60">
+    <button id="imageBtn" aria-label="Add Attachment" class="p-3 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-white/5">
+      <span class="material-symbols-outlined">attach_file</span>
+    </button>
+    <input id="imageInput" type="file" accept="image/*" class="hidden"/>
+    <button id="micBtn" aria-label="Speak" class="p-3 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-white/5">
+      <span class="material-symbols-outlined">mic</span>
+    </button>
+    <input id="chatInput" aria-label="Chat input" class="flex-grow bg-transparent border-none focus:ring-0 text-base text-on-surface placeholder-on-surface-variant/60 py-3" placeholder="Paste URL, image, or text claim..." type="text"/>
+    <button id="sendBtn" aria-label="Send Message" class="bg-primary text-on-primary p-3 rounded-full hover:brightness-110 transition-all flex items-center justify-center glow-primary">
+      <span class="material-symbols-outlined">send</span>
+    </button>
+  </div>
+  <div class="text-center mt-3 text-xs text-on-surface-variant/60">
+    Veritase can make mistakes. Consider checking important information.
+  </div>
+</div>
+
+</main>
+</div><!-- End #mainAppContainer -->
+
+<script>
+// ============================================================
+//  reCAPTCHA v2 + 2-Step Onboarding + Profile System
+// ============================================================
+const VERIFIED_KEY = "truthvision_verified";
+const PROFILE_KEY  = "truthvision_profile";
+const MIN_AGE = 13;
+const MAX_AGE = 120;
+
+// --- DOM refs: screens ---
+const verificationScreenContainer = document.getElementById("verificationScreenContainer");
+const onboardingNameContainer     = document.getElementById("onboardingNameContainer");
+const onboardingDobContainer      = document.getElementById("onboardingDobContainer");
+const mainAppContainer            = document.getElementById("mainAppContainer");
+const logoutBtn                   = document.getElementById("logoutBtn");
+
+// --- DOM refs: reCAPTCHA screen ---
+const recaptchaWidgetContainer = document.getElementById("recaptchaWidgetContainer");
+const recaptchaAlertBanner     = document.getElementById("recaptchaAlertBanner");
+const continueBtn              = document.getElementById("continueBtn");
+const continueBtnText          = document.getElementById("continueBtnText");
+const continueBtnSpinner       = document.getElementById("continueBtnSpinner");
+
+// --- DOM refs: Step 1 (Name) ---
+const onboardingNameForm = document.getElementById("onboardingNameForm");
+const userNameInput      = document.getElementById("userNameInput");
+const nameAlertBanner    = document.getElementById("nameAlertBanner");
+
+// --- DOM refs: Step 2 (DOB) ---
+const onboardingDobForm  = document.getElementById("onboardingDobForm");
+const userDobInput       = document.getElementById("userDobInput");
+const dobAlertBanner     = document.getElementById("dobAlertBanner");
+const calculatedAgeBadge = document.getElementById("calculatedAgeBadge");
+const calculatedAgeText  = document.getElementById("calculatedAgeText");
+const backToNameBtn      = document.getElementById("backToNameBtn");
+
+// --- DOM refs: Profile Modal ---
+const profileBtn           = document.getElementById("profileBtn");
+const profileModal         = document.getElementById("profileModal");
+const closeProfileModalBtn = document.getElementById("closeProfileModalBtn");
+const profileEditForm      = document.getElementById("profileEditForm");
+const profileNameInput     = document.getElementById("profileNameInput");
+const profileDobInput      = document.getElementById("profileDobInput");
+const profileAgeBadgeText  = document.getElementById("profileAgeBadgeText");
+const profileAlertBanner   = document.getElementById("profileAlertBanner");
+
+let recaptchaResponseToken = "";
+let recaptchaWidgetId = null;
+
+// ---- Utilities ----
+function calcAge(dobString) {
+  const dob = new Date(dobString);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+function validateDob(dobString) {
+  if (!dobString) return { ok: false, msg: "Please select your date of birth." };
+  const dob = new Date(dobString);
+  if (isNaN(dob.getTime())) return { ok: false, msg: "Invalid date. Please pick a valid date." };
+  const today = new Date();
+  if (dob > today) return { ok: false, msg: "Date of birth cannot be in the future." };
+  const age = calcAge(dobString);
+  if (age < MIN_AGE) return { ok: false, msg: `You must be at least ${MIN_AGE} years old to use TruthVision.` };
+  if (age > MAX_AGE) return { ok: false, msg: "The date of birth entered doesn't seem realistic. Please check and try again." };
+  return { ok: true, age };
+}
+
+function showAlert(banner, msg, isError = true) {
+  if (!banner) return;
+  banner.textContent = msg;
+  banner.className = isError
+    ? "w-full p-3.5 rounded-xl text-xs font-medium border text-center transition-all bg-error-container/30 border-error/40 text-on-error-container"
+    : "w-full p-3.5 rounded-xl text-xs font-medium border text-center transition-all bg-primary/10 border-primary/30 text-primary";
+  banner.classList.remove("hidden");
+}
+function hideAlert(banner) {
+  if (!banner) return;
+  banner.classList.add("hidden");
+  banner.textContent = "";
+}
+
+// ---- Screen switching ----
+function hideAllScreens() {
+  [verificationScreenContainer, onboardingNameContainer, onboardingDobContainer].forEach(el => {
+    if (el) el.classList.add("hidden");
+  });
+  if (mainAppContainer) mainAppContainer.classList.add("hidden");
+}
+
+function showScreen(el) {
+  hideAllScreens();
+  if (el) el.classList.remove("hidden");
+}
+
+// ---- Master session gating ----
+function checkAppSession() {
+  const isVerified = localStorage.getItem(VERIFIED_KEY) === "true";
+  const profileRaw = localStorage.getItem(PROFILE_KEY);
+  const hasProfile = (() => {
+    try { const p = JSON.parse(profileRaw); return !!(p && p.name && p.dob); }
+    catch { return false; }
+  })();
+
+  if (logoutBtn) logoutBtn.classList.toggle("hidden", !isVerified);
+
+  if (!isVerified) {
+    showScreen(verificationScreenContainer);
+    renderRecaptchaWidget();
+  } else if (!hasProfile) {
+    showScreen(onboardingNameContainer);
+    if (userNameInput) userNameInput.focus();
+  } else {
+    hideAllScreens();
+    if (mainAppContainer) mainAppContainer.classList.remove("hidden");
+    try {
+      const p = JSON.parse(profileRaw);
+      if (profileBtn) profileBtn.title = "Profile: " + p.name;
+    } catch {}
+  }
+}
+
+// ---- reCAPTCHA ----
+window.onRecaptchaSuccess = function(token) {
+  recaptchaResponseToken = token;
+  hideAlert(recaptchaAlertBanner);
+  if (continueBtn) continueBtn.disabled = false;
+};
+window.onRecaptchaExpired = function() {
+  recaptchaResponseToken = "";
+  if (continueBtn) continueBtn.disabled = true;
+  showAlert(recaptchaAlertBanner, "reCAPTCHA checkbox expired. Please check the box again.");
+};
+
+async function renderRecaptchaWidget() {
+  if (!recaptchaWidgetContainer) return;
+  recaptchaWidgetContainer.innerHTML = "";
+  try {
+    const configResp = await fetch("/recaptcha-config");
+    const configData = await configResp.json();
+    const siteKey = configData.site_key || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
+    const checkGrecaptcha = setInterval(() => {
+      if (window.grecaptcha && window.grecaptcha.render) {
+        clearInterval(checkGrecaptcha);
+        try {
+          recaptchaWidgetId = window.grecaptcha.render(recaptchaWidgetContainer, {
+            sitekey: siteKey, theme: "dark",
+            callback: "onRecaptchaSuccess", "expired-callback": "onRecaptchaExpired"
+          });
+        } catch (e) { console.warn("reCAPTCHA render error:", e); }
+      }
+    }, 100);
+  } catch (err) { console.warn("Failed to fetch reCAPTCHA config:", err); }
+}
+
+// reCAPTCHA Continue Button
+if (continueBtn) {
+  continueBtn.addEventListener("click", async () => {
+    if (!recaptchaResponseToken) {
+      showAlert(recaptchaAlertBanner, "Please complete the 'I'm not a robot' checkbox.");
+      return;
+    }
+    hideAlert(recaptchaAlertBanner);
+    continueBtn.disabled = true;
+    continueBtnText.textContent = "Verifying...";
+    if (continueBtnSpinner) continueBtnSpinner.classList.remove("hidden");
+    try {
+      const resp = await fetch("/verify-recaptcha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: recaptchaResponseToken })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        showAlert(recaptchaAlertBanner, data.error || "Verification failed. Please try again.");
+        if (window.grecaptcha && recaptchaWidgetId !== null) window.grecaptcha.reset(recaptchaWidgetId);
+        recaptchaResponseToken = "";
+        return;
+      }
+      localStorage.setItem(VERIFIED_KEY, "true");
+      checkAppSession();
+    } catch (err) {
+      showAlert(recaptchaAlertBanner, "Network error during verification. Please try again.");
+    } finally {
+      continueBtn.disabled = false;
+      continueBtnText.textContent = "Continue to TruthVision";
+      if (continueBtnSpinner) continueBtnSpinner.classList.add("hidden");
+    }
+  });
+}
+
+// ---- Step 1: Username / Name ----
+if (onboardingNameForm) {
+  onboardingNameForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = (userNameInput ? userNameInput.value : "").trim();
+    if (name.length < 2) {
+      showAlert(nameAlertBanner, "Please enter at least 2 characters for your name.");
+      return;
+    }
+    if (!/[a-zA-Z]/.test(name)) {
+      showAlert(nameAlertBanner, "Name must contain at least one letter.");
+      return;
+    }
+    hideAlert(nameAlertBanner);
+    sessionStorage.setItem("tv_pending_name", name);
+    showScreen(onboardingDobContainer);
+    if (userDobInput) { userDobInput.value = ""; userDobInput.focus(); }
+    if (calculatedAgeBadge) calculatedAgeBadge.classList.add("hidden");
+    hideAlert(dobAlertBanner);
+  });
+}
+
+// Back button in Step 2
+if (backToNameBtn) {
+  backToNameBtn.addEventListener("click", () => {
+    showScreen(onboardingNameContainer);
+    hideAlert(dobAlertBanner);
+  });
+}
+
+// Live age calculation in Step 2
+if (userDobInput) {
+  userDobInput.addEventListener("change", () => {
+    const val = userDobInput.value;
+    if (!val) { if (calculatedAgeBadge) calculatedAgeBadge.classList.add("hidden"); return; }
+    const v = validateDob(val);
+    if (v.ok) {
+      if (calculatedAgeText) calculatedAgeText.textContent = `Age: ${v.age} year${v.age !== 1 ? "s" : ""} old — Verified ✓`;
+      if (calculatedAgeBadge) calculatedAgeBadge.classList.remove("hidden");
+      hideAlert(dobAlertBanner);
+    } else {
+      if (calculatedAgeBadge) calculatedAgeBadge.classList.add("hidden");
+      showAlert(dobAlertBanner, v.msg);
+    }
+  });
+}
+
+// ---- Step 2: DOB Submit ----
+if (onboardingDobForm) {
+  onboardingDobForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const dob = userDobInput ? userDobInput.value : "";
+    const v = validateDob(dob);
+    if (!v.ok) { showAlert(dobAlertBanner, v.msg); return; }
+    hideAlert(dobAlertBanner);
+    const name = sessionStorage.getItem("tv_pending_name") || "User";
+    sessionStorage.removeItem("tv_pending_name");
+    const profile = { name, dob, age: v.age, createdAt: new Date().toISOString() };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    checkAppSession();
+  });
+}
+
+// ---- Logout ----
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    if (confirm("Are you sure you want to log out? You will need to verify again.")) {
+      localStorage.removeItem(VERIFIED_KEY);
+      localStorage.removeItem(PROFILE_KEY);
+      sessionStorage.removeItem("tv_pending_name");
+      recaptchaResponseToken = "";
+      hideAlert(recaptchaAlertBanner);
+      checkAppSession();
+    }
+  });
+}
+
+// ---- Profile Modal ----
+function openProfileModal() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROFILE_KEY));
+    if (profileNameInput) profileNameInput.value = p.name || "";
+    if (profileDobInput)  profileDobInput.value  = p.dob  || "";
+    const age = p.dob ? calcAge(p.dob) : "?";
+    if (profileAgeBadgeText) profileAgeBadgeText.textContent = `Verified — ${age} year${age !== 1 ? "s" : ""} old`;
+  } catch {}
+  hideAlert(profileAlertBanner);
+  if (profileModal) profileModal.classList.remove("hidden");
+}
+function closeProfileModal() {
+  if (profileModal) profileModal.classList.add("hidden");
+}
+
+if (profileBtn)           profileBtn.addEventListener("click", openProfileModal);
+if (closeProfileModalBtn) closeProfileModalBtn.addEventListener("click", closeProfileModal);
+if (profileModal) {
+  profileModal.addEventListener("click", (e) => { if (e.target === profileModal) closeProfileModal(); });
+}
+
+if (profileDobInput) {
+  profileDobInput.addEventListener("change", () => {
+    const v = validateDob(profileDobInput.value);
+    if (v.ok && profileAgeBadgeText)
+      profileAgeBadgeText.textContent = `Verified — ${v.age} year${v.age !== 1 ? "s" : ""} old`;
+  });
+}
+
+if (profileEditForm) {
+  profileEditForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = (profileNameInput ? profileNameInput.value : "").trim();
+    const dob  = profileDobInput ? profileDobInput.value : "";
+    if (name.length < 2 || !/[a-zA-Z]/.test(name)) {
+      showAlert(profileAlertBanner, "Please enter a valid name (at least 2 letters).");
+      return;
+    }
+    const v = validateDob(dob);
+    if (!v.ok) { showAlert(profileAlertBanner, v.msg); return; }
+    const existing = (() => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}; } catch { return {}; } })();
+    const updated = { ...existing, name, dob, age: v.age, updatedAt: new Date().toISOString() };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
+    if (profileBtn) profileBtn.title = "Profile: " + name;
+    if (profileAgeBadgeText) profileAgeBadgeText.textContent = `Verified — ${v.age} year${v.age !== 1 ? "s" : ""} old`;
+    showAlert(profileAlertBanner, "✓ Profile updated successfully!", false);
+    setTimeout(() => { hideAlert(profileAlertBanner); closeProfileModal(); }, 1400);
+  });
+}
+
+// ---- Kick off session check ----
+checkAppSession();
+
+const chatHistory = document.getElementById("chatHistory");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+const micBtn = document.getElementById("micBtn");
+const imageBtn = document.getElementById("imageBtn");
+const imageInput = document.getElementById("imageInput");
+const imagePreviewBar = document.getElementById("imagePreviewBar");
+const imagePreviewImg = document.getElementById("imagePreviewImg");
+const removeImageBtn = document.getElementById("removeImageBtn");
+const chips = document.getElementById("chips");
+const chipsWelcome = document.getElementById("chipsWelcome");
+const welcomeScreen = document.getElementById("welcomeScreen");
+const menuBtn = document.getElementById("menuBtn");
+const historySidebar = document.getElementById("historySidebar");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const closeSidebarBtn = document.getElementById("closeSidebarBtn");
+const newCheckBtn = document.getElementById("newCheckBtn");
+const historyList = document.getElementById("historyList");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+const HISTORY_KEY = "veritase_history";
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveToHistory(query, imageDataUrl, result) {
+  try {
+    const history = getHistory();
+    // Omit large base64 image strings from localStorage to prevent QuotaExceededError
+    history.unshift({
+      id: Date.now(),
+      query: query || (result && result.extracted_text ? result.extracted_text : "(image claim)"),
+      imageDataUrl: null,
+      result,
+      timestamp: new Date().toISOString()
+    });
+    if (history.length > 25) history.pop();
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      // If browser localStorage quota is full, prune history to 5 items
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 5)));
+      } catch (e2) {
+        // Ignore if storage is locked
+      }
+    }
+    renderHistoryList();
+  } catch (err) {
+    console.warn("Could not save item to history:", err);
+  }
+}
+
+function verdictDotColor(verdict) {
+  const v = (verdict || "").toLowerCase();
+  if (v.includes("real")) return "bg-primary";
+  if (v.includes("fake")) return "bg-error";
+  return "bg-secondary";
+}
+
+function renderHistoryList() {
+  const history = getHistory();
+  if (history.length === 0) {
+    historyList.innerHTML = `<div class="text-xs text-on-surface-variant/50 text-center mt-6">No history yet</div>`;
+    return;
+  }
+  historyList.innerHTML = history.map(item => `
+    <div class="history-item-wrap flex items-center gap-1 group rounded-xl hover:bg-white/[0.06] transition-colors">
+      <button class="history-item flex items-center gap-2 text-left px-3 py-2.5 flex-grow min-w-0" data-id="${item.id}">
+        <span class="w-2 h-2 rounded-full ${verdictDotColor(item.result.verdict)} flex-shrink-0"></span>
+        <span class="text-xs text-on-surface-variant truncate">${escapeHtml(item.query)}</span>
+      </button>
+      <button class="delete-history-item flex-shrink-0 p-1.5 mr-1 rounded-full text-on-surface-variant/40 hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity" data-id="${item.id}" title="Delete">
+        <span class="material-symbols-outlined text-[16px]">delete</span>
+      </button>
+    </div>
+  `).join("");
+
+  historyList.querySelectorAll(".history-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.getAttribute("data-id"));
+      const item = getHistory().find(h => h.id === id);
+      if (item) loadHistoryEntry(item);
+      closeSidebar();
+    });
+  });
+
+  historyList.querySelectorAll(".delete-history-item").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = Number(btn.getAttribute("data-id"));
+      const updated = getHistory().filter(h => h.id !== id);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      renderHistoryList();
+    });
+  });
+}
+
+function showChatView() {
+  welcomeScreen.classList.add("hidden");
+  chatHistory.classList.remove("hidden");
+}
+
+function showWelcomeScreen() {
+  chatHistory.classList.add("hidden");
+  chatHistory.innerHTML = "";
+  welcomeScreen.classList.remove("hidden");
+}
+
+function loadHistoryEntry(item) {
+  showChatView();
+  chatHistory.innerHTML = "";
+  addUserBubble(item.query === "(image claim)" ? "" : item.query, item.imageDataUrl);
+  addResultBubble(item.result);
+}
+
+function openSidebar() {
+  historySidebar.classList.remove("-translate-x-full");
+  sidebarOverlay.classList.remove("hidden");
+}
+function closeSidebar() {
+  historySidebar.classList.add("-translate-x-full");
+  sidebarOverlay.classList.add("hidden");
+}
+
+menuBtn.addEventListener("click", openSidebar);
+const historyTabBtn = document.getElementById("historyTabBtn");
+if (historyTabBtn) historyTabBtn.addEventListener("click", openSidebar);
+closeSidebarBtn.addEventListener("click", closeSidebar);
+sidebarOverlay.addEventListener("click", closeSidebar);
+
+newCheckBtn.addEventListener("click", () => {
+  showWelcomeScreen();
+  closeSidebar();
+});
+
+clearHistoryBtn.addEventListener("click", () => {
+  if (confirm("Clear all saved history? This can't be undone.")) {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistoryList();
+  }
+});
+
+renderHistoryList();
+
+// Header: session stat counter + live date/time
+let claimsCheckedThisSession = 0;
+const liveStatCounter = document.getElementById("liveStatCounter");
+const headerDateTime = document.getElementById("headerDateTime");
+
+function bumpClaimsCounter() {
+  claimsCheckedThisSession++;
+  if (liveStatCounter) liveStatCounter.textContent = claimsCheckedThisSession;
+}
+
+function updateHeaderClock() {
+  if (!headerDateTime) return;
+  const now = new Date();
+  const formatted = now.toLocaleString(undefined, {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
+  headerDateTime.textContent = formatted;
+}
+updateHeaderClock();
+setInterval(updateHeaderClock, 30000);
+
+let selectedImageFile = null;
+
+function handleChipClick(e) {
+  const btn = e.target.closest(".chip");
+  if (btn) {
+    chatInput.value = btn.getAttribute("data-text");
+    chatInput.focus();
+  }
+}
+
+if (chips) chips.addEventListener("click", handleChipClick);
+if (chipsWelcome) chipsWelcome.addEventListener("click", handleChipClick);
+
+imageBtn.addEventListener("click", () => imageInput.click());
+
+imageInput.addEventListener("change", () => {
+  const file = imageInput.files[0];
+  if (!file) return;
+  selectedImageFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    imagePreviewImg.src = e.target.result;
+    imagePreviewBar.classList.remove("hidden");
+    imagePreviewBar.classList.add("flex");
+  };
+  reader.readAsDataURL(file);
+});
+
+removeImageBtn.addEventListener("click", () => {
+  selectedImageFile = null;
+  imageInput.value = "";
+  imagePreviewBar.classList.add("hidden");
+  imagePreviewBar.classList.remove("flex");
+});
+
+// Picks the most natural-sounding female voice available in the browser,
+// falling back gracefully if the exact ones below aren't installed.
+// Voice lists load asynchronously in some browsers, so this also wires up
+// onvoiceschanged to retry once they're ready.
+let cachedFemaleVoice = null;
+const PREFERRED_FEMALE_VOICES = [
+  "Google UK English Female",
+  "Google US English",
+  "Microsoft Aria Online (Natural) - English (United States)",
+  "Microsoft Zira Desktop - English (United States)",
+  "Samantha",
+  "Victoria",
+  "Karen",
+  "Moira",
+  "Tessa"
+];
+
+function pickFemaleVoice() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return null;
+
+  for (const name of PREFERRED_FEMALE_VOICES) {
+    const match = voices.find(v => v.name === name);
+    if (match) return match;
+  }
+  // Fallback: guess by name containing "female" or a common female name,
+  // restricted to English voices so it doesn't grab a random language.
+  const englishVoices = voices.filter(v => v.lang && v.lang.startsWith("en"));
+  const guess = (englishVoices.length ? englishVoices : voices).find(v =>
+    /female|zira|aria|samantha|victoria|karen|moira|tessa|susan|fiona/i.test(v.name)
+  );
+  return guess || (englishVoices[0] || voices[0]);
+}
+
+if ("speechSynthesis" in window) {
+  cachedFemaleVoice = pickFemaleVoice();
+  speechSynthesis.onvoiceschanged = () => {
+    cachedFemaleVoice = pickFemaleVoice();
+  };
+
+  // Stop speaking immediately if the user switches tabs, minimizes the
+  // window, or navigates away, so it never keeps talking in the background.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) speechSynthesis.cancel();
+  });
+  window.addEventListener("pagehide", () => speechSynthesis.cancel());
+}
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  // continuous=true keeps the mic open across natural pauses in speech
+  // instead of auto-stopping after the first bit of silence.
+  recognition.continuous = true;
+  // interimResults=true lets the user see live text as they speak, so it's
+  // visually obvious the mic is still listening.
+  recognition.interimResults = true;
+
+  let baseText = "";      // whatever was already in the input before we started
+  let finalTranscript = ""; // finalized speech accumulated so far this session
+  let manualStop = true;  // true = user intentionally stopped, false = browser cut us off
+
+  micBtn.addEventListener("click", () => {
+    if (micBtn.classList.contains("listening")) {
+      // Clicking again while listening manually stops the mic for good.
+      manualStop = true;
+      recognition.stop();
+      return;
+    }
+    baseText = chatInput.value ? chatInput.value.trim() + " " : "";
+    finalTranscript = "";
+    manualStop = false;
+    recognition.start();
+    micBtn.classList.add("listening");
+  });
+
+  recognition.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalTranscript += transcript + " ";
+      } else {
+        interim += transcript;
+      }
+    }
+    chatInput.value = (baseText + finalTranscript + interim).trim();
+  };
+
+  recognition.onend = () => {
+    // Chrome enforces its own internal timeout on the speech service
+    // (often just a handful of seconds) regardless of continuous=true.
+    // If the user didn't click stop themselves, silently restart so it
+    // feels like one uninterrupted listening session.
+    if (!manualStop) {
+      // Whatever was captured so far becomes the new base text, so a
+      // restart never loses or overwrites what was already transcribed.
+      baseText = (baseText + finalTranscript).trim();
+      baseText = baseText ? baseText + " " : "";
+      finalTranscript = "";
+      try {
+        recognition.start();
+        return; // keep the "listening" UI state active
+      } catch (err) {
+        // start() can throw if called too soon after stop; ignore and
+        // fall through to clearing the listening state below.
+      }
+    }
+    micBtn.classList.remove("listening");
+  };
+  recognition.onerror = (e) => {
+    // "no-speech" fires on natural silence and is not a real error -
+    // let onend's auto-restart logic handle it instead of alerting.
+    if (e.error === "no-speech") return;
+    manualStop = true;
+    micBtn.classList.remove("listening");
+    alert("Mic error - please allow microphone access.");
+  };
+} else {
+  micBtn.disabled = true;
+  micBtn.title = "Speech recognition not supported in this browser.";
+}
+
+function scrollToBottom() {
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+function addUserBubble(text, imageDataUrl) {
+  const wrap = document.createElement("div");
+  wrap.className = "flex justify-end w-full msg-in";
+  wrap.innerHTML = `
+    <div class="bg-primary-container/25 border border-primary/30 text-on-surface rounded-2xl rounded-br-sm p-5 max-w-[85%] md:max-w-[70%] text-base msg-glow">
+      ${imageDataUrl ? `<img src="${imageDataUrl}" class="user-uploaded-img rounded-xl mb-2 max-h-48 cursor-pointer hover:opacity-90 hover:scale-[1.02] transition-all border border-white/20 shadow-md" title="Click to view full screen"/>` : ""}
+      ${text ? `<span>${escapeHtml(text)}</span>` : ""}
+    </div>`;
+  chatHistory.appendChild(wrap);
+  scrollToBottom();
+}
+
+function addLoadingBubble() {
+  const wrap = document.createElement("div");
+  wrap.className = "flex justify-start w-full msg-in";
+  wrap.id = "loadingBubble";
+  wrap.innerHTML = `
+    <div class="glass rounded-2xl rounded-bl-sm p-6 flex items-center gap-4">
+      <div class="sonar">
+        <div class="sonar-ring"></div>
+        <div class="sonar-ring"></div>
+        <div class="sonar-ring"></div>
+        <div class="sonar-dot"></div>
+      </div>
+      <span class="text-base text-on-surface-variant" id="loadingText">Classifying the claim...</span>
+    </div>`;
+  chatHistory.appendChild(wrap);
+  scrollToBottom();
+
+  const messages = ["Classifying the claim...", "Fetching sources...", "Cross-verifying facts...", "Weighing the evidence...", "Finalizing verdict..."];
+  let i = 0;
+  const interval = setInterval(() => {
+    i = (i + 1) % messages.length;
+    const el = document.getElementById("loadingText");
+    if (el) el.textContent = messages[i];
+  }, 1300);
+  return interval;
+}
+
+function removeLoadingBubble(interval) {
+  clearInterval(interval);
+  const el = document.getElementById("loadingBubble");
+  if (el) el.remove();
+}
+
+function verdictStyle(verdict) {
+  const v = (verdict || "").toLowerCase();
+  if (v.includes("real") || v.includes("true") || v.includes("verified")) {
+    return { color: "primary", glow: "glow-primary", label: "TRUE", badge: "VERIFIED NARRATIVE", icon: "check_circle" };
+  }
+  if (v.includes("fake") || v.includes("false") || v.includes("disputed")) {
+    return { color: "error", glow: "glow-error", label: "FALSE", badge: "DISPUTED NARRATIVE", icon: "cancel" };
+  }
+  if (v.includes("misleading")) {
+    return { color: "secondary", glow: "glow-amber", label: "MISLEADING", badge: "MISLEADING NARRATIVE", icon: "warning" };
+  }
+  return { color: "secondary", glow: "glow-amber", label: (verdict || "UNVERIFIED").toUpperCase(), badge: "UNVERIFIED NARRATIVE", icon: "help" };
+}
+
+function parseConfidencePercent(confidenceStr) {
+  if (!confidenceStr) return null;
+  const match = confidenceStr.match(/([\d.]+)%/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+function sanitizeModelNames(text) {
+  if (!text) return "";
+  return text
+    .replace(/Groq('s)?/gi, "")
+    .replace(/Gemini('s)?/gi, "")
+    .replace(/\bthe Logistic Regression model\b/gi, "the model")
+    .replace(/\bLogistic Regression model\b/gi, "machine learning model")
+    .replace(/\bML [Cc]lassifier\b/gi, "the analysis")
+    .replace(/\bAI knowledge\b/gi, "available knowledge")
+    .replace(/\blive web search\b/gi, "current information")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^\s*:\s*/, "")
+    .trim();
+}
+
+function sanitizeSourceLabel(label) {
+  if (/classifier|logistic regression/i.test(label)) {
+    return null;
+  }
+  return label;
+}
+
+function stripMetaCommentary(text) {
+  if (!text) return "";
+  return text
+    .replace(/Both AI models agree\.?/gi, "")
+    .replace(/Models disagree[^.]*\./gi, "")
+    .replace(/[^.]*gave a confident answer[^.]*\./gi, "")
+    .replace(/[^.]*could not confirm\.?/gi, "")
+    .replace(/[^.]*was unavailable \(rate limited\)[^.]*\./gi, "")
+    .replace(/Neither model could confidently verify this claim\.?/gi, "")
+    .trim();
+}
+
+function cleanText(text) {
+  return sanitizeModelNames(stripMetaCommentary(text || ""));
+}
+
+// Wraps the highlighted_claim phrase (if it appears in the paragraph) in an
+// amber pill, matching the "50% reduction" style callout from the design.
+function highlightClaimInText(text, highlightedClaim) {
+  const safeText = escapeHtml(text);
+  if (!highlightedClaim || !highlightedClaim.trim()) return safeText;
+  const safeHighlight = escapeHtml(highlightedClaim.trim());
+  const idx = safeText.toLowerCase().indexOf(safeHighlight.toLowerCase());
+  if (idx === -1) return safeText;
+  return (
+    safeText.slice(0, idx) +
+    `<span class="inline-block bg-secondary/15 border border-secondary/40 text-secondary text-sm font-semibold px-2 py-0.5 rounded-md">"${safeHighlight}"</span>` +
+    safeText.slice(idx + safeHighlight.length)
+  );
+}
+
+function addResultBubble(data) {
+  const vs = verdictStyle(data.verdict);
+
+  // Prefer the clean numeric confidence_percent field; fall back to parsing
+  // the older combined "Groq: 85% | Gemini: 90%" string.
+  const percent = (typeof data.confidence_percent === "number")
+    ? data.confidence_percent
+    : parseConfidencePercent(data.confidence);
+  const dash = percent !== null ? `${percent}, 100` : "70, 100";
+
+  const filteredSources = (data.sources_checked || []).map(sanitizeSourceLabel).filter(Boolean);
+  const sources = filteredSources.length > 0 ? filteredSources.join(", ") : null;
+
+  const misleadingPct = (typeof data.misleading_percentage === "number") ? data.misleading_percentage : null;
+  const consensusFact = cleanText(data.consensus_fact);
+  const reasonFlagged = cleanText(data.reason_flagged);
+  const mainExplanation = cleanText(data.explanation);
+
+  // Main narrative paragraph shows the overall synthesized analysis
+  const mainParagraph = mainExplanation || consensusFact;
+  const mainParagraphHtml = highlightClaimInText(mainParagraph, data.highlighted_claim);
+
+  let extraCards = "";
+  // Render Key Fact card ONLY if consensusFact is present and distinct from mainParagraph
+  if (consensusFact && consensusFact.toLowerCase().trim() !== mainParagraph.toLowerCase().trim()) {
+    extraCards += `
+      <div class="bg-primary/5 p-5 rounded-xl border border-primary/20 border-l-4 border-l-primary shadow-lg">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="material-symbols-outlined text-primary text-[22px]">verified</span>
+          <h4 class="text-sm font-extrabold text-primary tracking-wide">Key Fact & Headline</h4>
+        </div>
+        <p class="text-sm text-on-surface leading-relaxed font-normal">${escapeHtml(consensusFact)}</p>
+      </div>`;
+  }
+  if (reasonFlagged) {
+    extraCards += `
+      <div class="bg-secondary/5 p-5 rounded-xl border border-secondary/20 border-l-4 border-l-secondary shadow-lg">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="material-symbols-outlined text-secondary text-[22px]">warning</span>
+          <h4 class="text-sm font-extrabold text-secondary tracking-wide">${misleadingPct !== null && misleadingPct < 100 ? "Reason Why Misleading" : "Key Context & Reason Flagged"}</h4>
+        </div>
+        <p class="text-sm text-on-surface leading-relaxed font-normal">${escapeHtml(reasonFlagged)}</p>
+      </div>`;
+  }
+  // Fallback for results without rich fields
+  if (!consensusFact && !reasonFlagged && mainExplanation) {
+    extraCards += `
+      <div class="bg-white/[0.04] p-5 rounded-xl border border-white/10 md:col-span-2 shadow-lg">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="material-symbols-outlined text-primary text-[22px]">psychology</span>
+          <h4 class="text-sm font-extrabold text-on-surface tracking-wide">Reasoning & Pattern Analysis</h4>
+        </div>
+        <p class="text-sm text-on-surface-variant leading-relaxed font-normal">${escapeHtml(mainExplanation)}</p>
+      </div>`;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "flex justify-start w-full msg-in";
+  wrap.innerHTML = `
+    <div class="glass-strong rounded-2xl rounded-bl-sm p-6 md:p-8 max-w-[95%] md:max-w-[85%] flex flex-col gap-5">
+
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <span class="inline-flex items-center gap-2 border border-${vs.color}/40 text-${vs.color} text-xs font-bold tracking-wide px-4 py-2 rounded-full ${vs.glow}">
+          <span class="material-symbols-outlined text-[16px]">${vs.icon}</span> ${vs.badge}
+        </span>
+        <div class="flex items-center gap-3">
+          ${misleadingPct !== null && misleadingPct > 0 ? `
+          <span class="text-xs font-bold text-error bg-error/10 border border-error/30 px-3 py-1.5 rounded-full">${misleadingPct}% Misleading</span>` : ""}
+          ${percent !== null ? `
+          <div class="relative w-14 h-14 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <path class="text-white/10" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+              <path class="text-${vs.color}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="${dash}" stroke-linecap="round" stroke-width="3"></path>
+            </svg>
+            <span class="absolute text-on-surface font-bold text-[13px]">${percent}%</span>
+          </div>` : ""}
+          <span class="text-${vs.color} font-extrabold text-lg">${vs.label}</span>
+        </div>
+      </div>
+
+      ${data.extracted_text ? `
+      <div class="bg-white/[0.03] p-4 rounded-xl border border-white/[0.06]">
+        <div class="text-xs text-on-surface-variant mb-1">Extracted from image</div>
+        <div class="text-sm text-on-surface">${escapeHtml(data.extracted_text)}</div>
+      </div>` : ""}
+
+      ${mainParagraphHtml ? `<p class="text-base text-on-surface leading-relaxed">${mainParagraphHtml}</p>` : ""}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${extraCards}
+      </div>
+
+      <div class="flex items-center justify-between pt-4 border-t border-blue-500/30 flex-wrap gap-3">
+        <div class="flex items-center flex-wrap gap-2.5 text-xs">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-400/40 text-blue-400 font-bold tracking-wide shadow-[0_0_14px_rgba(59,130,246,0.3)]">
+            <span class="material-symbols-outlined text-[16px] text-blue-400">memory</span>
+            <span class="text-blue-300 font-medium">API Model in Use:</span>
+            <span class="text-white font-extrabold">${escapeHtml(data.api_used || "Active Model")}</span>
+          </span>
+          ${sources ? `<span class="text-on-surface-variant/80 font-medium pl-1">• Sources: ${escapeHtml(sources)}</span>` : ""}
+        </div>
+        <button class="speak-btn flex items-center gap-1.5 text-primary hover:brightness-125 text-xs font-bold px-3.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20 transition-all">
+          <span class="material-symbols-outlined text-[18px]">volume_up</span> Listen
+        </button>
+      </div>
+    </div>`;
+
+
+  chatHistory.appendChild(wrap);
+  scrollToBottom();
+
+  const speakBtn = wrap.querySelector(".speak-btn");
+  function setSpeakBtnState(isSpeaking) {
+    speakBtn.dataset.speaking = isSpeaking ? "true" : "false";
+    speakBtn.innerHTML = isSpeaking
+      ? `<span class="material-symbols-outlined text-[18px]">stop_circle</span> Stop`
+      : `<span class="material-symbols-outlined text-[18px]">volume_up</span> Listen`;
+  }
+
+  speakBtn.addEventListener("click", () => {
+    // If this bubble is the one currently speaking, clicking again stops it.
+    if (speakBtn.dataset.speaking === "true") {
+      speechSynthesis.cancel();
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(`Verdict: ${vs.label}. ${mainParagraph}${reasonFlagged ? " " + reasonFlagged : ""}`);
+    utterance.lang = "en-US";
+    // Use a warmer, more human female voice instead of the flat default,
+    // and slow the pace down slightly with a touch more pitch so it reads
+    // as relaxed and natural rather than clipped/robotic.
+    const femaleVoice = cachedFemaleVoice || pickFemaleVoice();
+    if (femaleVoice) utterance.voice = femaleVoice;
+    utterance.rate = 0.93;
+    utterance.pitch = 1.08;
+    utterance.volume = 1;
+    utterance.onstart = () => setSpeakBtnState(true);
+    // Covers natural completion AND being cut off early (tab switch, new
+    // query, or clicking Stop) - in every case the button resets cleanly.
+    utterance.onend = () => setSpeakBtnState(false);
+    utterance.onerror = () => setSpeakBtnState(false);
+
+    // Cancelling here stops any other bubble that might still be talking -
+    // its own onend/onerror will reset that bubble's button automatically.
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+  });
+}
+
+function addErrorBubble(message) {
+  const wrap = document.createElement("div");
+  wrap.className = "flex justify-start w-full msg-in";
+  wrap.innerHTML = `
+    <div class="bg-error-container/40 border border-error/40 text-on-error-container rounded-2xl rounded-bl-sm p-5 max-w-[85%] text-sm">
+      ${escapeHtml(message)}
+    </div>`;
+  chatHistory.appendChild(wrap);
+  scrollToBottom();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function handleSend() {
+  const text = chatInput.value.trim();
+  if (!text && !selectedImageFile) return;
+
+  // A new query/response is starting - stop any speech still playing from
+  // a previous result so it doesn't keep talking over the new one.
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+
+  showChatView();
+
+  let imageDataUrlForBubble = null;
+  if (selectedImageFile) imageDataUrlForBubble = imagePreviewImg.src;
+
+  addUserBubble(text, imageDataUrlForBubble);
+
+  const imageToSend = selectedImageFile;
+  chatInput.value = "";
+  selectedImageFile = null;
+  imageInput.value = "";
+  imagePreviewBar.classList.add("hidden");
+  imagePreviewBar.classList.remove("flex");
+
+  const loadingInterval = addLoadingBubble();
+
+  try {
+    let response, data;
+    if (imageToSend) {
+      const formData = new FormData();
+      formData.append("image", imageToSend);
+      response = await fetch("/check-image", { method: "POST", body: formData });
+    } else {
+      response = await fetch("/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+    }
+    data = await response.json();
+    removeLoadingBubble(loadingInterval);
+
+    if (!response.ok) {
+      addErrorBubble(data.error || "Something went wrong.");
+      return;
+    }
+    addResultBubble(data);
+    saveToHistory(text, imageDataUrlForBubble, data);
+    bumpClaimsCounter();
+
+  } catch (err) {
+    removeLoadingBubble(loadingInterval);
+    addErrorBubble("Something went wrong: " + err);
+  }
+}
+
+sendBtn.addEventListener("click", handleSend);
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleSend();
+});
+
+function attachBorderTrace(frameEl, radius = 16) {
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("class", "glow-trace");
+
+  // Use a <path> built from real straight-line + arc ("A") commands, rather
+  // than a <rect rx>. Browsers don't reliably compute getTotalLength() for a
+  // rounded rect using the same math they use to render its corners, which
+  // is what was throwing the trace off specifically on the curved ends. A
+  // path's rendered shape and its measured length always come from the same
+  // arc geometry, so the two can't drift apart.
+  const path = document.createElementNS(svgNS, "path");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "#4edea3");
+  path.setAttribute("stroke-width", "3");
+  path.setAttribute("stroke-linecap", "butt");
+  path.style.filter = "drop-shadow(0 0 5px rgba(78,222,163,0.95)) drop-shadow(0 0 11px rgba(78,222,163,0.55))";
+  path.style.opacity = "0";
+  path.style.transition = "opacity 0.25s ease";
+  svg.appendChild(path);
+  frameEl.appendChild(svg);
+
+  let currentAnim = null;
+  let isActive = false;
+
+  function roundedRectPath(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    return [
+      `M ${x + r} ${y}`,
+      `L ${x + w - r} ${y}`,
+      `A ${r} ${r} 0 0 1 ${x + w} ${y + r}`,
+      `L ${x + w} ${y + h - r}`,
+      `A ${r} ${r} 0 0 1 ${x + w - r} ${y + h}`,
+      `L ${x + r} ${y + h}`,
+      `A ${r} ${r} 0 0 1 ${x} ${y + h - r}`,
+      `L ${x} ${y + r}`,
+      `A ${r} ${r} 0 0 1 ${x + r} ${y}`,
+      "Z"
+    ].join(" ");
+  }
+
+  function sizeAndAnimate() {
+    const w = frameEl.offsetWidth;
+    const h = frameEl.offsetHeight;
+    if (!w || !h) return;
+
+    const strokeW = 3;
+    const inset = strokeW / 2;
+    const effectiveRadius = radius === "pill" ? Math.max(0, (h - strokeW) / 2) : radius;
+    const rectW = Math.max(0, w - strokeW);
+    const rectH = Math.max(0, h - strokeW);
+
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    path.setAttribute("d", roundedRectPath(inset, inset, rectW, rectH, effectiveRadius));
+
+    const perimeter = path.getTotalLength();
+    const dashLength = Math.max(50, perimeter * 0.08);
+    path.setAttribute("stroke-dasharray", `${dashLength} ${Math.max(0, perimeter - dashLength)}`);
+
+    if (currentAnim) currentAnim.cancel();
+    currentAnim = path.animate(
+      [{ strokeDashoffset: 0 }, { strokeDashoffset: -perimeter }],
+      { duration: 6000, iterations: Infinity, easing: "linear" }
+    );
+    // Preserve activation state across resizes, since a fresh animation
+    // always starts out playing.
+    if (!isActive) currentAnim.pause();
+  }
+
+  function activate() {
+    isActive = true;
+    frameEl.classList.add("is-active");
+    path.style.opacity = "1";
+    if (currentAnim) currentAnim.play();
+  }
+
+  function deactivate() {
+    isActive = false;
+    frameEl.classList.remove("is-active");
+    path.style.opacity = "0";
+    if (currentAnim) currentAnim.pause();
+  }
+
+  const inputEl = frameEl.querySelector("input#chatInput");
+  if (inputEl) {
+    inputEl.addEventListener("focus", activate);
+    inputEl.addEventListener("blur", deactivate);
+  }
+
+  sizeAndAnimate();
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => sizeAndAnimate());
+    ro.observe(frameEl);
+  } else {
+    window.addEventListener("resize", sizeAndAnimate);
+  }
+}
+
+const searchBarFrame = document.getElementById("searchBarFrame");
+if (searchBarFrame) attachBorderTrace(searchBarFrame, "pill");
+
+// Image Lightbox Modal logic
+const imageModal = document.getElementById("imageModal");
+const imageModalImg = document.getElementById("imageModalImg");
+const closeImageModal = document.getElementById("closeImageModal");
+
+function openImageModal(src) {
+  if (imageModal && imageModalImg) {
+    imageModalImg.src = src;
+    imageModal.classList.remove("hidden");
+  }
+}
+
+if (closeImageModal) {
+  closeImageModal.addEventListener("click", () => imageModal.classList.add("hidden"));
+}
+if (imageModal) {
+  imageModal.addEventListener("click", (e) => {
+    if (e.target === imageModal || e.target === closeImageModal) imageModal.classList.add("hidden");
+  });
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && imageModal && !imageModal.classList.contains("hidden")) {
+    imageModal.classList.add("hidden");
+  }
+});
+if (chatHistory) {
+  chatHistory.addEventListener("click", (e) => {
+    if (e.target.classList.contains("user-uploaded-img")) {
+      openImageModal(e.target.src);
+    }
+  });
+}
+
+// Animated Glowing AI Lightened Waves (Taller, connecting 'n' to Person Icon)
+function initHeaderWave() {
+  const canvas = document.getElementById("headerWaveCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  let phase = 0;
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+
+    if (!w || !h) {
+      requestAnimationFrame(draw);
+      return;
+    }
+
+    const centerY = h / 2;
+
+    // Glowing sine wave ribbons flowing strictly from left to right
+    const waveConfigs = [
+      { color: "#38bdf8", shadow: "rgba(56,189,248,0.7)",  width: 2.1, freq: 0.008, amp: 10, speed: 0.015, yOffset: -1 },
+      { color: "#4edea3", shadow: "rgba(78,222,163,0.65)", width: 1.8, freq: 0.011, amp: 9,  speed: 0.012, yOffset: 1 },
+      { color: "#60a5fa", shadow: "rgba(96,165,250,0.60)", width: 2.0, freq: 0.006, amp: 12, speed: 0.018, yOffset: 0 },
+      { color: "#34d399", shadow: "rgba(52,211,153,0.55)", width: 1.6, freq: 0.013, amp: 9,  speed: 0.014, yOffset: 1 }
+    ];
+
+    waveConfigs.forEach(wave => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineWidth = wave.width;
+      ctx.strokeStyle = wave.color;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = wave.shadow;
+
+      for (let x = 0; x <= w; x += 2) {
+        const t = x / w;
+        // Shortened straight beam tails (-) at both start (near 'n') and end (near Person icon)
+        const edgeFade = Math.pow(Math.sin(t * Math.PI), 1.15);
+        
+        const y = (centerY + wave.yOffset * edgeFade) + Math.sin(x * wave.freq - phase * wave.speed * 40) * wave.amp * edgeFade;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Smooth wave animation speed
+    phase += 0.022;
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+}
+initHeaderWave();
+</script>
+</body></html>

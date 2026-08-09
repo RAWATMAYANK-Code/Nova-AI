@@ -1,0 +1,7 @@
+requests
+python-dotenv
+groq
+scikit-learn
+pandas
+Flask-Limiter
+flask-cors

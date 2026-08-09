@@ -1,0 +1,28 @@
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Scratch / temp
+scratch/
+
+# Model binaries (can be large)
+model/*.pkl
+model/*.joblib
+model/*.h5
+model/*.bin
+
+# OS
+.DS_Store
+Thumbs.db
