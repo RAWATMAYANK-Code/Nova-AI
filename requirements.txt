@@ -1,11 +1,9 @@
-Flask
-Flask-Limiter
-Flask-Cors
+flask
 requests
 python-dotenv
+groq
 scikit-learn
 pandas
 joblib
 numpy
-groq
-
+gunicorn
