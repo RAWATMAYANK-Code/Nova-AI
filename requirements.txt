@@ -1,4 +1,6 @@
 flask
+flask-cors
+flask-limiter
 requests
 python-dotenv
 groq
@@ -7,6 +9,3 @@ pandas
 joblib
 numpy
 gunicorn
-flask-cors
-flask-limiter
-flask-recaptcha
