@@ -8,3 +8,5 @@ joblib
 numpy
 gunicorn
 flask-cors
+flask-limiter
+flask-recaptcha
